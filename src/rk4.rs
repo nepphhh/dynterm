@@ -21,13 +21,11 @@ use crate::vec::Vector;
 /// # Returns
 /// A vector of f64 values representing the approximated solution of the ODE at 
 /// each time step.
-
-fn rk4<F>(f: F, x0: Vector, t0: f64, h: f64, n: usize) -> Vec<Vector>
-where
-    F: Fn(f64, Vector) -> Vector,
+pub fn rk4_iter<F>(f: F, x0: Vector, t0: f64, h: f64, n: usize) -> Vec<Vector>
+where F: Fn(f64, Vector) -> Vector,
 {
     // Initialize the output vector with the given size
-    let mut x = vec![Vector{ x:0.0, y:0.0 }; n + 1]; 
+    let mut x = vec![Vector::new(0.0, 0.0); n + 1]; 
 
     // Set the initial condition
     x[0] = x0; 
@@ -52,4 +50,16 @@ where
     }
 
     x // Return the solution vector
+}
+pub fn rk4<F>(f: F, x: Vector, t: f64, h: f64) -> Vector
+where F: Fn(f64, Vector) -> Vector,
+{
+    // Calculate the four intermediate RK4 values (k1, k2, k3, and k4)
+    let k1 = h * f(t, x);
+    let k2 = h * f(t + 0.5 * h, x + (0.5 * k1));
+    let k3 = h * f(t + 0.5 * h, x + (0.5 * k2));
+    let k4 = h * f(t + h, x + k3);
+
+    // Update the solution vector with the weighted sum of the intermediate values
+    x + (k1 + (2.0 * k2) + (2.0 * k3) + k4) / 6.0
 }

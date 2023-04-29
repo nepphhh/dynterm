@@ -1,5 +1,5 @@
 use std::f64::consts::PI;
-use std::ops::{Add, Sub, Mul, Div};
+use std::ops::{Add, AddAssign, Sub, SubAssign, Mul, Div};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Vector {
@@ -8,26 +8,26 @@ pub struct Vector {
 }
 
 impl Vector {
-    pub fn new(x: f64, y: f64) -> Self {
+    pub const fn new(x: f64, y: f64) -> Self {
         Vector { x, y }
     }
 
     // Getters
-    pub fn x(&self) -> &f64 {
-        &self.x
+    #[inline] pub fn x(&self) -> f64 {
+        self.x
     }
-    pub fn y(&self) -> &f64 {
-        &self.y
+    #[inline] pub fn y(&self) -> f64 {
+        self.y
     }
-    pub fn magnitude(&self) -> f64 {
+    #[inline] pub fn magnitude(&self) -> f64 {
         (self.x.powi(2) + self.y.powi(2)).sqrt()
     }
-    pub fn orientation(&self) -> Angle {
+    #[inline] pub fn orientation(&self) -> Angle {
         Angle::from_radians(self.y.atan2(self.x))
     }
 }
 
-// Implement Add trait for Vector2d
+// Implement Add trait for Vector
 impl Add<Vector> for Vector {
     type Output = Vector;
 
@@ -38,8 +38,14 @@ impl Add<Vector> for Vector {
         }
     }
 }
+impl AddAssign<Vector> for Vector {
+    fn add_assign(self: &mut Vector, other: Vector) {
+        self.x += other.x;
+        self.y += other.y;
+    }
+}
 
-// Implement Sub trait for Vector2d
+// Implement Sub trait for Vector
 impl Sub<Vector> for Vector {
     type Output = Vector;
 
@@ -50,8 +56,14 @@ impl Sub<Vector> for Vector {
         }
     }
 }
+impl SubAssign<Vector> for Vector {
+    fn sub_assign(self: &mut Vector, other: Vector) {
+        self.x -= other.x;
+        self.y -= other.y;
+    }
+}
 
-// Implement Mul trait for Vector2d (dot product)
+// Implement Mul trait for Vector (dot product)
 impl Mul<Vector> for Vector {
     type Output = f64;
 
@@ -60,7 +72,7 @@ impl Mul<Vector> for Vector {
     }
 }
 
-// Implement Mul trait for Vector2d and f64 (scalar multiplication)
+// Implement Mul trait for Vector and f64 (scalar multiplication)
 impl Mul<Vector> for f64 {
     type Output = Vector;
 
@@ -72,7 +84,7 @@ impl Mul<Vector> for f64 {
     }
 }
 
-// Implement Div trait for Vector2d and f64 (scalar division)
+// Implement Div trait for Vector and f64 (scalar division)
 impl Div<f64> for Vector {
     type Output = Vector;
 
@@ -93,24 +105,27 @@ impl Angle {
 
     // Constructors
     pub fn from_degrees(degrees: f64) -> Self {
-        let radians = degrees.to_radians() % (2.0 * PI);
-        if radians < 0.0 { radians += 2.0 * PI; }
-        Self { radians }
+        Self { radians: Angle::clamp(degrees.to_radians()) }
     }
     pub fn from_radians(radians: f64) -> Self {
-        radians %= (2.0 * PI);
-        if radians < 0.0 { radians += 2.0 * PI; }
-        Self { radians }
+        Self { radians: Angle::clamp(radians) }
     }
     pub fn from_vector(vector: &Vector) -> Self {
         vector.orientation()
     }
 
-    // Getters
-    pub fn radians(&self) -> &f64 {
-        &self.radians
+    // Helper function
+    fn clamp(mut radians: f64) -> f64 { 
+        radians %= 2.0 * PI;
+        if radians < 0.0 { radians += 2.0 * PI; }
+        radians
     }
-    pub fn degrees(&self) -> f64 {
+
+    // Getters
+    #[inline] pub fn radians(&self) -> f64 {
+        self.radians
+    }
+    #[inline] pub fn degrees(&self) -> f64 {
         self.radians.to_degrees()
     }
 }
@@ -123,6 +138,11 @@ impl Add for Angle {
         Angle::from_radians(self.radians + other.radians)
     }
 }
+impl AddAssign for Angle {
+    fn add_assign(&mut self, other: Angle) {
+        self.radians = Angle::clamp(self.radians + other.radians);
+    }
+}
 
 // Implement Sub trait for Angle
 impl Sub for Angle {
@@ -130,5 +150,10 @@ impl Sub for Angle {
 
     fn sub(self, other: Angle) -> Angle {
         Angle::from_radians(self.radians - other.radians)
+    }
+}
+impl SubAssign for Angle {
+    fn sub_assign(&mut self, other: Angle) {
+        self.radians = Angle::clamp(self.radians - other.radians);
     }
 }
