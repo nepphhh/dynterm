@@ -11,6 +11,18 @@ impl Vector {
     pub const fn new(x: f64, y: f64) -> Self {
         Vector { x, y }
     }
+    pub fn from_radians(m: f64, r: f64) -> Self {
+        Vector { 
+            x: m * r.cos(), 
+            y: m * r.sin() 
+        }
+    }
+    pub fn from_degrees(m: f64, r: f64) -> Self {
+        Vector { 
+            x: m * r.to_radians().cos(), 
+            y: m * r.to_radians().sin() 
+        }
+    }
 
     // Getters
     #[inline] pub fn x(&self) -> f64 {
@@ -24,6 +36,9 @@ impl Vector {
     }
     #[inline] pub fn orientation(&self) -> Angle {
         Angle::from_radians(self.y.atan2(self.x))
+    }
+    pub fn print(&self, s: &str) {
+        println!("{}: ({:.2}, {:.2})", s, self.x, self.y);
     }
 }
 
