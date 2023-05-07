@@ -1,26 +1,27 @@
 use plotters::prelude::*;
 
 // Define a function that takes an array of tuples and generates a scatter plot
-pub fn plot_scatter(data: &[(f64, f64)]) -> Result<(), Box<dyn std::error::Error>> {
+pub fn plot_scatter(data: &[(f64, f64, f64)]) -> Result<(), Box<dyn std::error::Error>> {
 
     // Calculate the minimum and maximum x and y values in the data array
-    let (x_min, x_max) = data.iter().map(|(x, _)| x)
+    let (x_min, x_max) = data.iter().map(|(x, _, _)| x)
         .fold(
             (f64::INFINITY, f64::NEG_INFINITY), 
             // Find the minimum and maximum values for x
             |acc, &x| (acc.0.min(x), acc.1.max(x))
         );
-    let (y_min, y_max) = data.iter().map(|(_, y)| y)
+    let (y_min, y_max) = data.iter().map(|(_, y, _)| y)
         .fold(
             (f64::INFINITY, f64::NEG_INFINITY), 
             // Find the minimum and maximum values for y
             |acc, &y| (acc.0.min(y), acc.1.max(y))
         );
+    let aspect_ratio = (x_max-x_min) / (y_max-y_min);
 
     // Create a new bitmap backend with a specified filename and dimensions
     let root = BitMapBackend::new(
         "scatter.png", 
-        (600 * ((x_max-x_min) / (y_max-y_min)) as u32, 600)
+        (600 * aspect_ratio.ceil() as u32, 600)
     ).into_drawing_area();
 
     // Fill the backend with white color
@@ -41,7 +42,10 @@ pub fn plot_scatter(data: &[(f64, f64)]) -> Result<(), Box<dyn std::error::Error
     // Draw the data points as circles with radius 5 and black color
     chart.draw_series(
         data.iter().map(
-            |(x, y)| Circle::new((*x, *y), 5, BLACK.filled())
+            |(x, y, aoa)| Circle::new(
+                (*x, *y), 
+                5, 
+                RGBColor((255.0 * aoa/60.0) as u8, 0, 0).filled())
         )
     ).unwrap();
 
