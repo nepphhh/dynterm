@@ -1,16 +1,14 @@
-// Define a public struct named `Linear` with a single lifetime parameter 'a.
-// This lifetime parameter is used to ensure the reference inside the struct remains valid.
 pub struct Linear<'a> {
     // Define a data field that is a reference to a slice of tuples (f64, f64)
     // The 'a lifetime parameter ensures that the reference remains valid for the lifetime of the struct.
-    data: &'a [(f64, f64)],
+    data: &'a Vec<(f64, f64)>,
 }
 
 // Implement methods for the `Linear` struct.
 impl<'a> Linear<'a> {
 
-    // Constructor, takes an array of f64 tuples
-    pub fn new(data: &'a [(f64, f64)]) -> Self {
+    // Constructor, takes a vector of f64 tuples
+    pub const fn new(data: &'a Vec<(f64, f64)>) -> Self {
         Linear { data }
     }
 
@@ -35,7 +33,7 @@ impl<'a> Linear<'a> {
         // Calculate the interpolation factor `t` based on the 
         // x-values of the two points.
         let t = (x - data[i].0) / (data[j].0 - data[i].0);
-        
+
         // Calculate the interpolated y-value based on the y-values 
         // of the two points and the interpolation factor `t`.
         data[i].1 + t * (data[j].1 - data[i].1)

@@ -24,6 +24,15 @@ impl Vector {
         }
     }
 
+    // Math
+    #[inline] pub fn dot(self, other: Vector) -> f64 {
+        self.x * other.x + self.y * other.y
+    }
+
+    #[inline] pub fn cross(self, other: Vector) -> f64 {
+        self.x * other.y - self.y * other.x
+    }
+
     // Getters
     #[inline] pub fn x(&self) -> f64 {
         self.x
@@ -78,15 +87,6 @@ impl SubAssign<Vector> for Vector {
     }
 }
 
-// Implement Mul trait for Vector (dot product)
-impl Mul<Vector> for Vector {
-    type Output = f64;
-
-    fn mul(self, other: Vector) -> f64 {
-        self.x * other.x + self.y * other.y
-    }
-}
-
 // Implement Mul trait for Vector and f64 (scalar multiplication)
 impl Mul<Vector> for f64 {
     type Output = Vector;
@@ -137,10 +137,10 @@ impl Angle {
     }
 
     // Getters
-    #[inline] pub fn radians(&self) -> f64 {
+    #[inline] pub fn rad(&self) -> f64 {
         self.radians
     }
-    #[inline] pub fn degrees(&self) -> f64 {
+    #[inline] pub fn deg(&self) -> f64 {
         self.radians.to_degrees()
     }
 }

@@ -1,4 +1,6 @@
 use plotters::prelude::*;
+use once_cell::sync::Lazy;
+use std::str::FromStr;
 
 // Define a function that takes an array of tuples and generates a scatter plot
 pub fn plot_scatter(data: &[(f64, f64, f64)]) -> Result<(), Box<dyn std::error::Error>> {
@@ -45,7 +47,7 @@ pub fn plot_scatter(data: &[(f64, f64, f64)]) -> Result<(), Box<dyn std::error::
             |(x, y, aoa)| Circle::new(
                 (*x, *y), 
                 5, 
-                RGBColor((255.0 * aoa/60.0) as u8, 0, 0).filled())
+                RGBColor((255.0 * aoa/90.0) as u8, 0, 0).filled())
         )
     ).unwrap();
 
@@ -56,7 +58,7 @@ pub fn plot_scatter(data: &[(f64, f64, f64)]) -> Result<(), Box<dyn std::error::
 // https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/19770009539.pdf
 // https://www.icao.int/environmental-protection/CarbonOffset/Documents/CarbonNeutral/IcaoDoc8643_en.pdf
 // https://web.mit.edu/drela/Public/web/qprop/atmos.pdf
-pub fn isa_density(altitude: f64) -> f64 {
+fn isa_density(altitude: f64) -> f64 {
     const RHO0: f64 = 1.225; // Density at sea level, kg/m^3
     const T0: f64 = 288.15; // Temperature at sea level, K
     const L: f64 = 0.0065;  // Temperature lapse rate, K/m
@@ -78,5 +80,19 @@ pub fn isa_density(altitude: f64) -> f64 {
     RHO0 * (press / 101325.0)
 }
 
+const SEA_LEVEL_DENSITY: Lazy<f64> = Lazy::new(|| isa_density(0.0));
+#[inline] pub fn atmo_density(altitude: f64) -> f64 {
+    isa_density(altitude) / *SEA_LEVEL_DENSITY
+}
 
-// Define
+
+// Reads a string literal as if it were a csv
+pub fn parse_string_as_csv(s: &str) -> Vec<(f64, f64)> {
+    s.lines().map(|line| {
+            let values: Vec<&str> = line.split(',').collect();
+            let x = f64::from_str(values[0].trim()).unwrap();
+            let y = f64::from_str(values[1].trim()).unwrap();
+            (x, y)
+        })
+        .collect::<Vec<(f64, f64)>>()
+}
