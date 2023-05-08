@@ -17,7 +17,6 @@ impl<'a> Linear<'a> {
     // type is used to represent a value that might be missing 
     // (None) or available (Some(value)).
     pub fn interpolate(&self, x: f64) -> f64 {
-        let data = self.data;
 
         // Find the indices of the two points that will be used 
         // for interpolation. Use the `binary_search_by` method, 
@@ -25,17 +24,17 @@ impl<'a> Linear<'a> {
         // is found, the `Ok` variant contains the index of the value.
         // Otherwise, the `Err` variant contains the index where 
         // the value would be inserted.
-        let i = data.binary_search_by(|probe| probe.0.partial_cmp(&x).unwrap())
+        let i = self.data.binary_search_by(|probe| probe.0.partial_cmp(&x).unwrap())
             .unwrap_or_else(|i| i - 1); // If the exact value is not found, subtract 1 from the index.
         let j = i + 1;
 
         // Interpolate between the two points.
         // Calculate the interpolation factor `t` based on the 
         // x-values of the two points.
-        let t = (x - data[i].0) / (data[j].0 - data[i].0);
+        let t = (x - self.data[i].0) / (self.data[j].0 - self.data[i].0);
 
         // Calculate the interpolated y-value based on the y-values 
         // of the two points and the interpolation factor `t`.
-        data[i].1 + t * (data[j].1 - data[i].1)
+        self.data[i].1 + t * (self.data[j].1 - self.data[i].1)
     }
 }

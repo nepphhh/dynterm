@@ -23,6 +23,9 @@ impl Vector {
             y: m * r.to_radians().sin() 
         }
     }
+    pub fn unit(&self) -> Vector {
+        Vector::from_radians(1.0, self.orientation().rad())
+    }
 
     // Math
     #[inline] pub fn dot(self, other: Vector) -> f64 {
@@ -46,9 +49,7 @@ impl Vector {
     #[inline] pub fn orientation(&self) -> Angle {
         Angle::from_radians(self.y.atan2(self.x))
     }
-    pub fn print(&self, s: &str) {
-        println!("{}: ({:.2}, {:.2})", s, self.x, self.y);
-    }
+    
 }
 
 // Implement Add trait for Vector
@@ -128,6 +129,9 @@ impl Angle {
     pub fn from_vector(vector: &Vector) -> Self {
         vector.orientation()
     }
+    pub fn pi() -> Self {
+        Self { radians: PI }
+    }
 
     // Helper function
     fn clamp(mut radians: f64) -> f64 { 
@@ -141,7 +145,14 @@ impl Angle {
         self.radians
     }
     #[inline] pub fn deg(&self) -> f64 {
-        self.radians.to_degrees()
+        let mut deg = self.radians.to_degrees();
+        if deg == 360.0 { deg = 0.0; }
+        deg
+    }
+    #[inline] pub fn nice_deg(&self) -> f64 {
+        let mut deg = self.radians.to_degrees();
+        if deg > 180.0 { deg -= 360.0; }
+        deg
     }
 }
 

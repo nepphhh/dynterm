@@ -41,7 +41,8 @@ pub fn plot_scatter(data: &[(f64, f64, f64)]) -> Result<(), Box<dyn std::error::
     // Configure the chart's mesh (grid lines) and draw it
     chart.configure_mesh().draw()?;
 
-    // Draw the data points as circles with radius 5 and black color
+    // Draw the data points as circles with radius 5 and a color corresponding to the AoA
+    // indicated as the third element of the tuple in the input data
     chart.draw_series(
         data.iter().map(
             |(x, y, aoa)| Circle::new(
@@ -84,7 +85,6 @@ const SEA_LEVEL_DENSITY: Lazy<f64> = Lazy::new(|| isa_density(0.0));
 #[inline] pub fn atmo_density(altitude: f64) -> f64 {
     isa_density(altitude) / *SEA_LEVEL_DENSITY
 }
-
 
 // Reads a string literal as if it were a csv
 pub fn parse_string_as_csv(s: &str) -> Vec<(f64, f64)> {
