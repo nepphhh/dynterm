@@ -1,5 +1,4 @@
 /target
-/lit
 *.png
 .vscode
 *.lock
