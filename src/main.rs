@@ -32,10 +32,10 @@ fn main() {
     let mut vehicle: Vehicle = Vehicle::new(
         44.22,
         112_000.0,
-        Vector::new(0.0, 6_000.0), 
-        Vector::from_degrees(250.0, 0.0), 
+        Vector::new(0.0, 7_300.0), 
+        Vector::from_degrees(265.0, 45.0), 
         Aerofoil::new(226.0, Angle::from_degrees(0.0), &cl, &cd, &cm),
-        Aerofoil::new(24.0, Angle::from_degrees(-1.8), &cl, &cd, &cm),
+        Aerofoil::new(24.0, Angle::from_degrees(0.0), &cl, &cd, &cm),
     );
 
     // Set up our record of positions
@@ -58,11 +58,12 @@ fn main() {
         let total_aero_moment = wing_moment + elev_moment + elev_position.cross(elev_forces);
 
         // Components?
-        let orientation_unit: Vector = Vector::from_radians(1.0, vehicle.velocity.orientation().rad());
+        let orientation_unit: Vector = vehicle.velocity.orientation().unit();
         let aero_tangent: Vector = (orientation_unit.cross(total_aero_force)) * orientation_unit;
 
         // Control force
-        let thrust_force: Vector = Vector::from_radians(aero_tangent.magnitude(), aero_tangent.orientation().rad() + PI);
+        let thrust_force: Vector = Vector::from_radians(
+            aero_tangent.magnitude(), aero_tangent.orientation().rad() + PI);
 
         // Body force
         let weight_force: Vector = vehicle.mass * G;
@@ -73,7 +74,7 @@ fn main() {
 
         // Control
         let orientation = vehicle.orientation();
-        let target = total_aero_force.orientation() + Angle::pi();
+        let target = vehicle.direction(); // total_aero_force.orientation() + Angle::pi();
         vehicle.elev.set_pitch(Angle::from_degrees(0.1 * (target-orientation).nice_deg()));
 
         // Perform logging

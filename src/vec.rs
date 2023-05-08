@@ -132,6 +132,9 @@ impl Angle {
     pub fn pi() -> Self {
         Self { radians: PI }
     }
+    pub fn unit(&self) -> Vector {
+        Vector::from_radians(1.0, self.radians)
+    }
 
     // Helper function
     fn clamp(mut radians: f64) -> f64 { 
