@@ -6,15 +6,12 @@ mod interpolate;
 mod util;
 
 use crate::aero::{Aerofoil, Vehicle};
-use crate::vec::{Vector, Angle};
+use crate::vec::*;
 use crate::interpolate::Linear;
 use crate::util::*;
 
-use std::f64::consts::PI;
-
-const G: Vector = Vector::new(0.0, -9.81); // m/s2
-const N: usize = 10_000_000;
-const NMOD: usize = 10_000;
+const N: usize = 30_000;
+const NMOD: usize = 10;
 
 
 fn main() {
@@ -30,12 +27,28 @@ fn main() {
 
     // Define the vehicle
     let mut vehicle: Vehicle = Vehicle::new(
-        44.22,
-        112_000.0,
-        Vector::new(0.0, 7_300.0), 
-        Vector::from_degrees(265.0, 45.0), 
-        Aerofoil::new(226.0, Angle::from_degrees(0.0), &cl, &cd, &cm),
-        Aerofoil::new(24.0, Angle::from_degrees(0.0), &cl, &cd, &cm),
+        100_00.0,
+        46.6,
+        Kinematics::new(
+            Vector::new(0.0, 7_300.0), 
+            Angle::from_degrees(45.0)
+        ),
+        Kinematics::new(
+            Vector::new(26.5, 45.0), 
+            Angle::from_degrees(0.0)
+        ),
+        Aerofoil::new(
+            280.0, 
+            8.0, 
+            Angle::from_degrees(0.0), 
+            &cl, &cd, &cm
+        ),
+        Aerofoil::new(
+            40.0, 
+            4.0, 
+            Angle::from_degrees(0.0),
+            &cl, &cd, &cm
+        )
     );
 
     // Set up our record of positions
@@ -43,54 +56,15 @@ fn main() {
 
     for i in 0..N {
 
-        // Aero forces
-        let wing_forces: Vector = vehicle.wing.lift_force(&vehicle) + vehicle.wing.drag_force(&vehicle);
-        let elev_forces: Vector = vehicle.elev.lift_force(&vehicle) + vehicle.elev.drag_force(&vehicle);
-
-        let wing_moment: f64 = vehicle.wing.pitching_moment(&vehicle);
-        let elev_moment: f64 = vehicle.elev.pitching_moment(&vehicle);
-        
-        // Position of control surface
-        let elev_position: Vector = Vector::from_radians(vehicle.length/2.0, vehicle.orientation.rad() + PI);
-
-        // Total aero forces
-        let total_aero_force = wing_forces + elev_forces;
-        let total_aero_moment = wing_moment + elev_moment + elev_position.cross(elev_forces);
-
-        // Components?
-        let orientation_unit: Vector = vehicle.velocity.orientation().unit();
-        let aero_tangent: Vector = (orientation_unit.cross(total_aero_force)) * orientation_unit;
-
-        // Control force
-        let thrust_force: Vector = Vector::from_radians(
-            aero_tangent.magnitude(), aero_tangent.orientation().rad() + PI);
-
-        // Body force
-        let weight_force: Vector = vehicle.mass * G;
-
-        // Apply physics
-        vehicle.apply_moment(total_aero_moment);
-        vehicle.apply_force(thrust_force + total_aero_force + weight_force);
-
-        // Control
-        let orientation = vehicle.orientation();
-        let target = vehicle.direction(); // total_aero_force.orientation() + Angle::pi();
-        vehicle.elev.set_pitch(Angle::from_degrees(0.1 * (target-orientation).nice_deg()));
+        vehicle.apply_dynamics(100);
 
         // Perform logging
         if i % NMOD == 0 {
-            println!("Speed: {:.2} Direction: {:.2} AoA: {:.2}", vehicle.speed(), vehicle.direction().nice_deg(), vehicle.aoa().nice_deg());
-            println!("Aero: ({:.0}, {:.0}) Thrust: ({:.0}, {:.0})",
-                total_aero_force.magnitude(), total_aero_force.orientation().nice_deg(),
-                thrust_force.magnitude(), thrust_force.orientation().nice_deg()
-            );
+            let datum = (vehicle.position.x(), vehicle.position.y(), vehicle.aoa().nice_deg().abs());
 
-            let resultant = thrust_force + total_aero_force;
-            println!("Resultant force (Gs): ({:.2}, {:.0})",
-                resultant.magnitude() / weight_force.magnitude(), resultant.orientation().nice_deg()
-            );
+            println!("{:.0}: {:?}", i/NMOD, datum);
 
-            data[i/NMOD] = (vehicle.position.x(), vehicle.position.y(), vehicle.aoa().nice_deg().abs());
+            data[i/NMOD] = datum;
         }
 
         // Terminate if it hits the ground

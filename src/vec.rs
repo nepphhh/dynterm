@@ -186,3 +186,58 @@ impl SubAssign for Angle {
         self.radians = Angle::clamp(self.radians - other.radians);
     }
 }
+
+// Make a container that holds them both
+#[derive(Debug, Copy, Clone)]
+pub struct Kinematics {
+    vec: Vector,
+    ang: f64,
+}
+impl Kinematics {
+    pub fn new_raw(vec: Vector, ang: f64) -> Self { Kinematics { vec, ang } }
+    pub fn new(vec: Vector, ang: Angle) -> Self { Kinematics { vec, ang: ang.rad() } }
+    pub fn x(&self) -> f64 { self.vec.x() }
+    pub fn y(&self) -> f64 { self.vec.y() }
+    pub fn magnitude(&self) -> f64 { self.vec.magnitude() }
+    pub fn direction(&self) -> Angle { self.vec.orientation() }
+    pub fn angle(&self) -> Angle { Angle::from_radians(self.ang) }
+    pub fn raw_angle(&self) -> f64 { self.ang }
+}
+impl Add for Kinematics {
+    type Output = Kinematics; 
+    fn add(self, other: Kinematics) -> Kinematics { 
+        Kinematics {
+            vec: self.vec + other.vec, 
+            ang: self.ang + other.ang
+        }
+    }
+}
+impl Sub for Kinematics {
+    type Output = Kinematics; 
+    fn sub(self, other: Kinematics) -> Kinematics { 
+        Kinematics {
+            vec: self.vec - other.vec, 
+            ang: self.ang - other.ang
+        }
+    }
+}
+impl Mul<Kinematics> for f64 {
+    type Output = Kinematics;
+
+    fn mul(self, kinematics: Kinematics) -> Kinematics {
+        Kinematics {
+            vec: self * kinematics.vec, 
+            ang: kinematics.ang * self
+        }
+    }
+}
+impl Div<f64> for Kinematics {
+    type Output = Kinematics;
+
+    fn div(self, scalar: f64) -> Kinematics {
+        Kinematics {
+            vec: self.vec / scalar,
+            ang: self.ang / scalar,
+        }
+    }
+}

@@ -57,8 +57,6 @@ pub fn plot_scatter(data: &[(f64, f64, f64)]) -> Result<(), Box<dyn std::error::
 }
 
 // https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/19770009539.pdf
-// https://www.icao.int/environmental-protection/CarbonOffset/Documents/CarbonNeutral/IcaoDoc8643_en.pdf
-// https://web.mit.edu/drela/Public/web/qprop/atmos.pdf
 fn isa_density(altitude: f64) -> f64 {
     const RHO0: f64 = 1.225; // Density at sea level, kg/m^3
     const T0: f64 = 288.15; // Temperature at sea level, K
