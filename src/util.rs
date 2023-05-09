@@ -23,7 +23,7 @@ pub fn plot_scatter(
             // Find the minimum and maximum values for y
             |acc, &y| (acc.0.min(y), acc.1.max(y))
         );
-    let aspect_ratio = if do_aspect { (x_max-x_min) / (y_max-y_min) } else { 2.0 };
+    let aspect_ratio = if do_aspect { (x_max-x_min) / (y_max-y_min) } else { 3.0 };
 
     // Create a new bitmap backend with a specified filename and dimensions
     let mut path: String = "".to_owned();
@@ -31,11 +31,11 @@ pub fn plot_scatter(
     path.push_str(".png");
 
     let x_dim = if aspect_ratio >= 1.0 { 
-                         (600.0 * aspect_ratio).ceil() as u32 
-                     } else { 600 };
+                         (320.0 * aspect_ratio).ceil() as u32 
+                     } else { 320 };
     let y_dim = if aspect_ratio <= 1.0 { 
-                         (600.0 / aspect_ratio).ceil() as u32
-                     } else { 600 };
+                         (320.0 / aspect_ratio).ceil() as u32
+                     } else { 320 };
 
     let root = BitMapBackend::new(&path, (x_dim, y_dim)).into_drawing_area();
 
@@ -45,9 +45,9 @@ pub fn plot_scatter(
     // Create a new chart builder with specified dimensions and margins
     let mut chart = ChartBuilder::on(&root)
         .x_label_area_size(40)
-        .y_label_area_size(40)
-        .margin(5)
-        .caption(title, ("sans-serif", 30))
+        .y_label_area_size(80)
+        .margin(10)
+        .caption(title, ("sans-serif", 16))
         // Set the limits of the chart to the calculated minimum and maximum 
         // values for x and y
         .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
@@ -58,13 +58,13 @@ pub fn plot_scatter(
         .y_desc(y_label)
         .draw()?;
 
-    // Draw the data points as circles with radius 3 and a color corresponding 
+    // Draw the data points as circles with radius 2 and a color corresponding 
     // to the AoA indicated as the third element of the tuple in the input data
     chart.draw_series(
         data.iter().map(
             |(x, y, aoa)| Circle::new(
                 (*x, *y), 
-                3, 
+                2, 
                 RGBColor((255.0 * aoa/90.0) as u8, 0, 0).filled())
         )
     ).unwrap();
@@ -75,7 +75,7 @@ pub fn plot_scatter(
 }
 
 // https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/19770009539.pdf
-fn isa_density(altitude: f64) -> f64 {
+pub fn isa_density(altitude: f64) -> f64 {
     const RHO0: f64 = 1.225; // Density at sea level, kg/m^3
     const T0: f64 = 288.15; // Temperature at sea level, K
     const L: f64 = 0.0065;  // Temperature lapse rate, K/m
@@ -98,9 +98,26 @@ fn isa_density(altitude: f64) -> f64 {
 }
 
 const SEA_LEVEL_DENSITY: Lazy<f64> = Lazy::new(|| isa_density(0.0));
+
 #[inline] pub fn atmo_density(altitude: f64) -> f64 {
     isa_density(altitude) / *SEA_LEVEL_DENSITY
 }
+
+pub fn isa_dynamic_viscosity(altitude: f64) -> f64 {
+    const T0: f64 = 288.15; // Temperature at sea level, K
+    const L: f64 = 0.0065;  // Temperature lapse rate, K/m
+    const S: f64 = 11.4;    // Sutherland's constant, K
+    const BETA: f64 = 1.458e-6; // kg/s/m/K^0.5
+
+    let temp = if altitude <= 11000.0 {
+        T0 - L * altitude
+    } else {
+        216.65
+    };
+
+    BETA * temp.powf(1.5) / (temp + S) // Ns/m^2
+}
+
 
 // Reads a string literal as if it were a csv
 pub fn parse_string_as_csv(s: &str) -> Vec<(f64, f64)> {

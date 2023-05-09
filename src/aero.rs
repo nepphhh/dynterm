@@ -4,11 +4,15 @@ use crate::rk4::rk4;
 use crate::util::*;
 
 use std::f64::consts::PI;
+use std::cell::UnsafeCell;
 
-/// `Aerofoil` represents a simplified airfoil or control surface with specified aerodynamic coefficients.
-/// Properties include area and pitch relative to the body vehicle. Aerodynamic coefficients are provided using interpolation objects.
-/// The `Aerofoil` struct provides methods for calculating aerodynamic forces and moments acting on the airfoil
-/// when attached to a `Vehicle`. It also allows setting the pitch angle of the airfoil, simulating control surface deflection.
+/// `Aerofoil` represents a simplified airfoil or control surface with 
+/// specified aerodynamic coefficients. Properties include area and pitch
+/// relative to the body vehicle. Aerodynamic coefficients are provided 
+/// using interpolation objects. The `Aerofoil` struct provides methods 
+/// for calculating aerodynamic forces and moments acting on the airfoil
+/// when attached to a `Vehicle`. It also allows setting the pitch angle
+/// of the airfoil, simulating control surface deflection.
 pub struct Aerofoil<'a> { 
     area: f64,
     chord: f64,
@@ -21,7 +25,13 @@ pub struct Aerofoil<'a> {
 impl<'a> Aerofoil<'a> {
 
     // Constructor
-    pub fn new(area: f64, chord: f64, pitch: Angle, cl: &'a Linear<'a>, cd: &'a Linear<'a>, cm: &'a Linear<'a>) -> Aerofoil<'a> {
+    pub fn new(
+        area: f64, 
+        chord: f64, 
+        pitch: Angle, 
+        cl: &'a Linear<'a>, 
+        cd: &'a Linear<'a>, 
+        cm: &'a Linear<'a>) -> Aerofoil<'a> {
         Aerofoil { area, chord, pitch, cl, cd, cm }
     }
 
@@ -84,7 +94,6 @@ impl<'a> Aerofoil<'a> {
 /// `Vehicle` represents a simplified aerospace vehicle with a massless main wing 
 /// and stabilator. The `Vehicle` struct provides methods for applying forces and
 /// moments to the vehicle using RK4.
-/// 
 /// 'a is a lifetime marker, indicating that the references to wings must be valid 
 /// for the lifetime of the vehicle.
 pub struct Vehicle<'a> {
@@ -94,45 +103,60 @@ pub struct Vehicle<'a> {
     pub position: Kinematics,
     pub motion: Kinematics,
     pub wing: Aerofoil<'a>,
-    pub elev: Aerofoil<'a>
+    pub elev: Aerofoil<'a>,
+    pub max_thrust: f64,
+    pub last_thrust: UnsafeCell<f64>,
 }
 
 // Implementation block for the Vehicle structure
 impl<'a> Vehicle<'a> {
     
     // Constructor for a new Vehicle instance
-    // Takes in the mass, length, initial position, initial motion, and wing and elevator aerofoils
-    pub fn new(mass: f64, length: f64, position: Kinematics, motion: Kinematics, wing: Aerofoil<'a>, elev: Aerofoil<'a>) -> Vehicle<'a> {
+    // Takes in the mass, length, initial position, initial motion, and wing and 
+    // elevator aerofoils
+    pub fn new(
+        mass: f64, 
+        length: f64, 
+        position: Kinematics, 
+        motion: Kinematics, 
+        wing: Aerofoil<'a>, 
+        elev: Aerofoil<'a>,
+        max_thrust: f64) -> Vehicle<'a> {
         Vehicle { 
             mass,    // Mass of the vehicle
             length,  // Length of the vehicle
-            // Moment of inertia is computed using the formula for a rod rotated about its center
+            // Moment of inertia is computed using the formula for a rod 
+            // rotated about its center
             moment: mass * length.powi(2) / 12.0,
             position, // Initial position of the vehicle
             motion,   // Initial motion of the vehicle
             wing,     // Wing aerofoil
             elev,     // Elevator aerofoil
+            max_thrust,
+            last_thrust: UnsafeCell::new(f64::NAN), // Evil
         }
     }
     
-    // Returns the angle of attack, the difference between the angle of the vehicle and the direction of its motion
+    // Returns the angle of attack, the difference between the angle of the 
+    // vehicle and the direction of its motion
     #[inline] pub fn aoa(&self) -> Angle {
         self.position.angle() - self.motion.direction()
     }
 
     // Calculates the dynamics of the vehicle given its current position and velocity
     #[allow(non_snake_case)]
-    fn calculate_dynamics(&self, k: &Kinematics, dk: &Kinematics) -> Kinematics {
+    fn calculate_dynamics(
+        &self, 
+        k: &Kinematics, 
+        dk: &Kinematics) -> Kinematics {
 
         // Aerofoil references for wing and elevator
         let w: &Aerofoil = &self.wing;
         let e: &Aerofoil = &self.elev;
         
         // Position vector of the elevator
-        let r_e = Vector::from_radians(self.length/2.0, k.angle().rad() + PI);
-        
-        // Unit vector in the direction of the free stream velocity
-        let free_stream_unit: Vector = dk.direction().unit();
+        let r_e = Vector::from_radians(
+            self.length/2.0, k.angle().rad() + PI);        
 
         // Gravitational force acting on the body
         let W = self.mass * Vector::new(0.0, -9.81);
@@ -141,35 +165,38 @@ impl<'a> Vehicle<'a> {
         let F_w: Vector = w.lift_force(k, dk) + w.drag_force(k, dk);
         let F_e: Vector = e.lift_force(k, dk) + e.drag_force(k, dk);
         
-        // Control force to maintain stability
-        let aero_tangent: Vector = (free_stream_unit.cross(F_w + F_e)) * free_stream_unit;
-        let T = Vector::from_radians(
-            0_000.0, //aero_tangent.magnitude(), 
-            k.angle().rad() + PI);
+        // Control force to counteract drag?
+        let thrust = if self.position.y() < 7_300.0 { self.max_thrust }
+         else { (-(F_w + F_e).dot(k.angle().unit())).clamp(0.0, self.max_thrust) };
+        let T = Vector::from_radians(thrust, k.angle().rad());
+        unsafe { *self.last_thrust.get() = thrust; } // Evil
 
         // Returns the acceleration and the angular acceleration of the vehicle
         Kinematics::new_raw(
-            F_w + F_e + T + W,
-            w.pitching_moment(k, dk) + e.pitching_moment(k, dk) + r_e.cross(F_e)
-        ) / self.mass
+            (F_w + F_e + T + W) / self.mass,
+            (w.pitching_moment(k, dk) 
+                    + e.pitching_moment(k, dk) 
+                    + r_e.cross(F_e)) / self.moment
+        ) 
     }
 
 
-    // Use RK4 to apply the calculated forces and moments to the object over the duration of a second
-    // The method takes in the number of steps N to discretize the second into
-    pub fn apply_dynamics(&mut self, N: u16) {
+    // Use RK4 to apply the calculated forces and moments to the object over the
+    // duration of a second. The method takes in the number of steps N to discretize
+    // the second into
+    pub fn apply_dynamics(&mut self, dt: f64, n: u16) {
 
         // Time step
-        let h: f64 = 1.0 / N as f64;
+        let h: f64 = dt / n as f64;
 
         // Iterate over the time steps
-        for i in 0..N {
+        for _ in 0..n {
             
-            // Calculate the velocity at each time step using RK4 and the dynamics function  
-            // The function "f" calculates the derivative of the motion (velocity), using the
-            // dynamics function to get the acceleration
+            // Calculate the velocity at each time step using RK4 and the dynamics 
+            // function. The function "f" calculates the derivative of the motion 
+            // (velocity), using the dynamics function to get the acceleration
             let f = 
-            |t: f64, dk: Kinematics| t * self.calculate_dynamics(&self.position, &dk);
+                |_: f64, dk: Kinematics| self.calculate_dynamics(&self.position, &dk);
 
             // RK4 is used to update the vehicle's motion (velocity) based on its 
             // acceleration...
@@ -178,7 +205,7 @@ impl<'a> Vehicle<'a> {
             // The function "f" calculates the derivative of the position (velocity)
             // It uses the current velocity to get the rate of change of position
             let f = 
-                |t: f64, _: Kinematics| t * self.motion;
+                |_: f64, _: Kinematics| self.motion;
 
             // ...and RK4 is used to update the vehicle's position based on its velocity
             self.position = rk4(f, self.position, 0.0, h);

@@ -195,8 +195,8 @@ impl SubAssign for Angle {
 // Make a container that holds them both
 #[derive(Debug, Copy, Clone)]
 pub struct Kinematics {
-    vec: Vector,
-    ang: f64,
+    pub vec: Vector,
+    pub ang: f64,
 }
 impl Kinematics {
     pub fn new_raw(vec: Vector, ang: f64) -> Self { Kinematics { vec, ang } }
@@ -208,7 +208,6 @@ impl Kinematics {
     pub fn magnitude(&self) -> f64 { self.vec.magnitude() }
     pub fn direction(&self) -> Angle { self.vec.orientation() }
     pub fn angle(&self) -> Angle { Angle::from_radians(self.ang) }
-    pub fn raw_angle(&self) -> f64 { self.ang }
 }
 
 // Implement arithmetic traits
