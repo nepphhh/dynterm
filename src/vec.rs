@@ -1,6 +1,7 @@
 use std::f64::consts::PI;
 use std::ops::{Add, AddAssign, Sub, SubAssign, Mul, Div};
 
+// A 2d vector object
 #[derive(Debug, Copy, Clone)]
 pub struct Vector {
     x: f64,
@@ -8,6 +9,8 @@ pub struct Vector {
 }
 
 impl Vector {
+
+    // Constructors
     pub const fn new(x: f64, y: f64) -> Self {
         Vector { x, y }
     }
@@ -23,6 +26,8 @@ impl Vector {
             y: m * r.to_radians().sin() 
         }
     }
+
+    // Helper function 
     pub fn unit(&self) -> Vector {
         Vector::from_radians(1.0, self.orientation().rad())
     }

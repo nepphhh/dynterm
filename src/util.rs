@@ -3,7 +3,12 @@ use once_cell::sync::Lazy;
 use std::str::FromStr;
 
 // Define a function that takes an array of tuples and generates a scatter plot
-pub fn plot_scatter(data: &[(f64, f64, f64)]) -> Result<(), Box<dyn std::error::Error>> {
+pub fn plot_scatter(
+    title: &str, 
+    x_label: &str, 
+    y_label: &str, 
+    do_aspect: bool, 
+    data: &[(f64, f64, f64)]) -> Result<(), Box<dyn std::error::Error>> {
 
     // Calculate the minimum and maximum x and y values in the data array
     let (x_min, x_max) = data.iter().map(|(x, _, _)| x)
@@ -18,13 +23,21 @@ pub fn plot_scatter(data: &[(f64, f64, f64)]) -> Result<(), Box<dyn std::error::
             // Find the minimum and maximum values for y
             |acc, &y| (acc.0.min(y), acc.1.max(y))
         );
-    let aspect_ratio = (x_max-x_min) / (y_max-y_min);
+    let aspect_ratio = if do_aspect { (x_max-x_min) / (y_max-y_min) } else { 2.0 };
 
     // Create a new bitmap backend with a specified filename and dimensions
-    let root = BitMapBackend::new(
-        "scatter.png", 
-        (600 * aspect_ratio.ceil() as u32, 600)
-    ).into_drawing_area();
+    let mut path: String = "".to_owned();
+    path.push_str(title);
+    path.push_str(".png");
+
+    let x_dim = if aspect_ratio >= 1.0 { 
+                         (600.0 * aspect_ratio).ceil() as u32 
+                     } else { 600 };
+    let y_dim = if aspect_ratio <= 1.0 { 
+                         (600.0 / aspect_ratio).ceil() as u32
+                     } else { 600 };
+
+    let root = BitMapBackend::new(&path, (x_dim, y_dim)).into_drawing_area();
 
     // Fill the backend with white color
     root.fill(&WHITE)?;
@@ -34,26 +47,31 @@ pub fn plot_scatter(data: &[(f64, f64, f64)]) -> Result<(), Box<dyn std::error::
         .x_label_area_size(40)
         .y_label_area_size(40)
         .margin(5)
-        .caption("Scatter Plot", ("sans-serif", 30))
-        // Set the limits of the chart to the calculated minimum and maximum values for x and y
+        .caption(title, ("sans-serif", 30))
+        // Set the limits of the chart to the calculated minimum and maximum 
+        // values for x and y
         .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
 
-    // Configure the chart's mesh (grid lines) and draw it
-    chart.configure_mesh().draw()?;
+    // Configure the chart's mesh (grid lines), add labels, and draw it
+    chart.configure_mesh()
+        .x_desc(x_label)
+        .y_desc(y_label)
+        .draw()?;
 
-    // Draw the data points as circles with radius 5 and a color corresponding to the AoA
-    // indicated as the third element of the tuple in the input data
+    // Draw the data points as circles with radius 3 and a color corresponding 
+    // to the AoA indicated as the third element of the tuple in the input data
     chart.draw_series(
         data.iter().map(
             |(x, y, aoa)| Circle::new(
                 (*x, *y), 
-                5, 
+                3, 
                 RGBColor((255.0 * aoa/90.0) as u8, 0, 0).filled())
         )
     ).unwrap();
 
     // Return success status
     Ok(())
+
 }
 
 // https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/19770009539.pdf

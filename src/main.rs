@@ -11,14 +11,17 @@ use crate::util::*;
 
 // Timestep values
 const N: usize = 30_000;
-const NMOD: usize = 10;
+const NMOD: usize = 1;
 
 fn main() {
 
     // Set up aero coeffs
-    let cl_0012_data: Vec<(f64, f64)> = parse_string_as_csv(include_str!("../data/lift.csv"));
-    let cd_0012_data: Vec<(f64, f64)> = parse_string_as_csv(include_str!("../data/drag.csv"));
-    let cm_0012_data: Vec<(f64, f64)> = parse_string_as_csv(include_str!("../data/moment.csv"));
+    let cl_0012_data: Vec<(f64, f64)> = 
+        parse_string_as_csv(include_str!("../data/lift.csv"));
+    let cd_0012_data: Vec<(f64, f64)> = 
+        parse_string_as_csv(include_str!("../data/drag.csv"));
+    let cm_0012_data: Vec<(f64, f64)> = 
+        parse_string_as_csv(include_str!("../data/moment.csv"));
 
     // Make aero interpolation models
     let cl: Linear = Linear::new(&cl_0012_data);
@@ -52,29 +55,93 @@ fn main() {
     );
 
     // Set up our record of positions
-    let mut data = vec![(0.0, 0.0, 0.0); N/NMOD];
+    let mut data = vec![(0.0, 7_300.0, 0.0); N/NMOD];
+
+    // Set up other trackers
+    let mut aoa = vec![(0.0, 0.0, 0.0); N/NMOD];
+    let mut omega = vec![(0.0, 0.0, 0.0); N/NMOD];
+    let mut dx   = vec![(0.0, 0.0, 0.0); N/NMOD];
+    let mut dy   = vec![(0.0, 0.0, 0.0); N/NMOD];
+
 
     // Loop
-    for i in 0..N {
+    for second in 0..N {
 
         // Iterate using RK4
         vehicle.apply_dynamics(100);
 
         // Perform logging
-        if i % NMOD == 0 {
-            let datum = (vehicle.position.x(), vehicle.position.y(), vehicle.aoa().nice_deg().abs());
+        if second % NMOD == 0 {
 
-            println!("{:.0}: {:?}", i/NMOD, datum);
+            let index = second/NMOD;
 
-            data[i/NMOD] = datum;
+            let datum = (
+                vehicle.position.x(), 
+                vehicle.position.y(), 
+                vehicle.aoa().nice_deg().abs()
+            );
+
+            println!("{:.0}: {:?}", second/NMOD, datum);
+
+            data[index] = datum;
+            aoa[index] = (second as f64, vehicle.aoa().nice_deg(), 0.0);
+            omega[index] = (second as f64, vehicle.motion.angle().nice_deg(), 0.0);
+            dx[index] = (second as f64, vehicle.motion.x(), 0.0);
+            dy[index] = (second as f64, vehicle.motion.y(), 0.0);
         }
 
         // Terminate if it hits the ground
-        if vehicle.position.y() <= 0.0 { break; }
+        if vehicle.position.y() <= 7_300.0 { break; }
     }
 
     // Plot the data
-    match plot_scatter(&data) {
+    match plot_scatter(
+        "Trajectory", 
+        "Distance [m]", 
+        "Altitude [m]",
+        true, 
+        &data) 
+    {
+        Ok(()) => {},
+        Err(e) => eprintln!("Error generating plot: {}", e),
+    }
+    match plot_scatter(
+        "Angle of Attack", 
+        "Time [s]",
+        "Angle [deg]",
+        false, 
+        &aoa) 
+    {
+        Ok(()) => {},
+        Err(e) => eprintln!("Error generating plot: {}", e),
+    }
+    match plot_scatter(
+        "Angular Velocity",
+        "Time [s]",
+        "Rotation [deg/s]", 
+        false, 
+        &omega) 
+    {
+        Ok(()) => {},
+        Err(e) => eprintln!("Error generating plot: {}", e),
+    }
+    match plot_scatter(
+        "Horizontal Velocity",
+        "Time [s]",
+        "Velocity [m/s]", 
+        false, 
+        &dx) 
+    {
+        Ok(()) => {},
+        Err(e) => eprintln!("Error generating plot: {}", e),
+    }
+    match plot_scatter(
+        "Vertical Velocity",
+        "Time [s]",
+        "Velocity [m/s]", 
+        false, 
+        &dy) 
+    {
         Ok(()) => {},
         Err(e) => eprintln!("Error generating plot: {}", e),
     }

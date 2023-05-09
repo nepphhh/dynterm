@@ -1,6 +1,7 @@
 pub struct Linear<'a> {
     // Define a data field that is a reference to a slice of tuples (f64, f64)
-    // The 'a lifetime parameter ensures that the reference remains valid for the lifetime of the struct.
+    // The 'a lifetime parameter ensures that the reference remains valid for 
+    // the lifetime of the struct.
     data: &'a Vec<(f64, f64)>,
 }
 
@@ -25,7 +26,8 @@ impl<'a> Linear<'a> {
         // Otherwise, the `Err` variant contains the index where 
         // the value would be inserted.
         let i = self.data.binary_search_by(|probe| probe.0.partial_cmp(&x).unwrap())
-            .unwrap_or_else(|i| i - 1); // If the exact value is not found, subtract 1 from the index.
+            // If the exact value is not found, subtract 1 from the index.
+            .unwrap_or_else(|i| i - 1); 
         let j = i + 1;
 
         // Interpolate between the two points.
