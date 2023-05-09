@@ -196,6 +196,8 @@ pub struct Kinematics {
 impl Kinematics {
     pub fn new_raw(vec: Vector, ang: f64) -> Self { Kinematics { vec, ang } }
     pub fn new(vec: Vector, ang: Angle) -> Self { Kinematics { vec, ang: ang.rad() } }
+
+    // Getters & helper functions
     pub fn x(&self) -> f64 { self.vec.x() }
     pub fn y(&self) -> f64 { self.vec.y() }
     pub fn magnitude(&self) -> f64 { self.vec.magnitude() }
@@ -203,6 +205,8 @@ impl Kinematics {
     pub fn angle(&self) -> Angle { Angle::from_radians(self.ang) }
     pub fn raw_angle(&self) -> f64 { self.ang }
 }
+
+// Implement arithmetic traits
 impl Add for Kinematics {
     type Output = Kinematics; 
     fn add(self, other: Kinematics) -> Kinematics { 

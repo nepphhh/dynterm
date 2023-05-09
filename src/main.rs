@@ -1,18 +1,17 @@
-// Digitized using https://apps.automeris.io/wpd/ (WebPlotDigitizer)
+// Local imports
 mod rk4;
 mod aero; 
 mod vec;
 mod interpolate;
 mod util;
-
 use crate::aero::{Aerofoil, Vehicle};
 use crate::vec::*;
 use crate::interpolate::Linear;
 use crate::util::*;
 
+// Timestep values
 const N: usize = 30_000;
 const NMOD: usize = 10;
-
 
 fn main() {
 
@@ -21,6 +20,7 @@ fn main() {
     let cd_0012_data: Vec<(f64, f64)> = parse_string_as_csv(include_str!("../data/drag.csv"));
     let cm_0012_data: Vec<(f64, f64)> = parse_string_as_csv(include_str!("../data/moment.csv"));
 
+    // Make aero interpolation models
     let cl: Linear = Linear::new(&cl_0012_data);
     let cd: Linear = Linear::new(&cd_0012_data);
     let cm: Linear = Linear::new(&cm_0012_data);
@@ -54,8 +54,10 @@ fn main() {
     // Set up our record of positions
     let mut data = vec![(0.0, 0.0, 0.0); N/NMOD];
 
+    // Loop
     for i in 0..N {
 
+        // Iterate using RK4
         vehicle.apply_dynamics(100);
 
         // Perform logging

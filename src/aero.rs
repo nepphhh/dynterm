@@ -81,8 +81,12 @@ impl<'a> Aerofoil<'a> {
     }
 }
 
-/// `Vehicle` represents a simplified aerospace vehicle with a massless main wing and stabilator.
-/// The `Vehicle` struct provides methods for applying forces and moments to the vehicle using RK4.
+/// `Vehicle` represents a simplified aerospace vehicle with a massless main wing 
+/// and stabilator. The `Vehicle` struct provides methods for applying forces and
+/// moments to the vehicle using RK4.
+/// 
+/// 'a is a lifetime marker, indicating that the references to wings must be valid 
+/// for the lifetime of the vehicle.
 pub struct Vehicle<'a> {
     pub mass: f64,
     pub length: f64,
@@ -93,66 +97,90 @@ pub struct Vehicle<'a> {
     pub elev: Aerofoil<'a>
 }
 
+// Implementation block for the Vehicle structure
 impl<'a> Vehicle<'a> {
+    
+    // Constructor for a new Vehicle instance
+    // Takes in the mass, length, initial position, initial motion, and wing and elevator aerofoils
     pub fn new(mass: f64, length: f64, position: Kinematics, motion: Kinematics, wing: Aerofoil<'a>, elev: Aerofoil<'a>) -> Vehicle<'a> {
         Vehicle { 
-            mass, 
-            length,
+            mass,    // Mass of the vehicle
+            length,  // Length of the vehicle
+            // Moment of inertia is computed using the formula for a rod rotated about its center
             moment: mass * length.powi(2) / 12.0,
-            position,
-            motion,
-            wing,
-            elev,
+            position, // Initial position of the vehicle
+            motion,   // Initial motion of the vehicle
+            wing,     // Wing aerofoil
+            elev,     // Elevator aerofoil
         }
     }
+    
+    // Returns the angle of attack, the difference between the angle of the vehicle and the direction of its motion
     #[inline] pub fn aoa(&self) -> Angle {
         self.position.angle() - self.motion.direction()
     }
 
+    // Calculates the dynamics of the vehicle given its current position and velocity
     #[allow(non_snake_case)]
     fn calculate_dynamics(&self, k: &Kinematics, dk: &Kinematics) -> Kinematics {
 
+        // Aerofoil references for wing and elevator
         let w: &Aerofoil = &self.wing;
         let e: &Aerofoil = &self.elev;
+        
+        // Position vector of the elevator
         let r_e = Vector::from_radians(self.length/2.0, k.angle().rad() + PI);
+        
+        // Unit vector in the direction of the free stream velocity
         let free_stream_unit: Vector = dk.direction().unit();
 
-        // Body force
+        // Gravitational force acting on the body
         let W = self.mass * Vector::new(0.0, -9.81);
 
-        // Aero forces
+        // Aerodynamic forces acting on the wing and elevator
         let F_w: Vector = w.lift_force(k, dk) + w.drag_force(k, dk);
         let F_e: Vector = e.lift_force(k, dk) + e.drag_force(k, dk);
         
-        // Control 
+        // Control force to maintain stability
         let aero_tangent: Vector = (free_stream_unit.cross(F_w + F_e)) * free_stream_unit;
         let T = Vector::from_radians(
             0_000.0, //aero_tangent.magnitude(), 
             k.angle().rad() + PI);
 
-        // Return accleration & alpha
+        // Returns the acceleration and the angular acceleration of the vehicle
         Kinematics::new_raw(
             F_w + F_e + T + W,
             w.pitching_moment(k, dk) + e.pitching_moment(k, dk) + r_e.cross(F_e)
         ) / self.mass
-
     }
 
 
-    // Use RK4 to apply a simple force to the object over the duration of a second
+    // Use RK4 to apply the calculated forces and moments to the object over the duration of a second
+    // The method takes in the number of steps N to discretize the second into
     pub fn apply_dynamics(&mut self, N: u16) {
 
+        // Time step
         let h: f64 = 1.0 / N as f64;
 
+        // Iterate over the time steps
         for i in 0..N {
-            // Apply acceleration to velocity
+            
+            // Calculate the velocity at each time step using RK4 and the dynamics function  
+            // The function "f" calculates the derivative of the motion (velocity), using the
+            // dynamics function to get the acceleration
             let f = 
-                |t: f64, dk: Kinematics| t * self.calculate_dynamics(&self.position, &dk);
+            |t: f64, dk: Kinematics| t * self.calculate_dynamics(&self.position, &dk);
+
+            // RK4 is used to update the vehicle's motion (velocity) based on its 
+            // acceleration...
             self.motion = rk4(f, self.motion, 0.0, h);
 
-            // Apply velocity to position
+            // The function "f" calculates the derivative of the position (velocity)
+            // It uses the current velocity to get the rate of change of position
             let f = 
                 |t: f64, _: Kinematics| t * self.motion;
+
+            // ...and RK4 is used to update the vehicle's position based on its velocity
             self.position = rk4(f, self.position, 0.0, h);
         }
     }
